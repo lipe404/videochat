@@ -37,23 +37,40 @@ const iceServers = [
   },
 ];
 
-// Captura de mídia inicial
-navigator.mediaDevices
-  .getUserMedia({ video: true, audio: true })
-  .then((stream) => {
-    localStream = stream;
-    myVideo.muted = true;
-    addVideoStream(myVideo, stream);
+// Função para capturar a mídia e conectar ao entrar na sala
+document.getElementById("join-room").addEventListener("click", () => {
+  const roomId = prompt(
+    "Digite o ID da sala ou deixe em branco para criar uma nova:"
+  );
+  if (!roomId) {
+    // Cria uma sala com ID aleatório
+    currentRoomId = Math.random().toString(36).substr(2, 9);
+    alert(`Sala criada! Compartilhe o ID: ${currentRoomId}`);
+  } else {
+    currentRoomId = roomId;
+  }
 
-    // Configura botões de controle
-    setupMediaControls(stream);
-  })
-  .catch((error) => {
-    console.error("Erro ao acessar a câmera/microfone:", error);
-    alert(
-      "Não foi possível acessar a câmera ou microfone. Verifique as permissões."
-    );
-  });
+  // Captura de mídia
+  navigator.mediaDevices
+    .getUserMedia({ video: true, audio: true })
+    .then((stream) => {
+      localStream = stream;
+      myVideo.muted = true;
+      addVideoStream(myVideo, stream);
+
+      // Configura botões de controle
+      setupMediaControls(stream);
+
+      // Conectar à sala após capturar a mídia
+      joinRoom(currentRoomId, localStream);
+    })
+    .catch((error) => {
+      console.error("Erro ao acessar a câmera/microfone:", error);
+      alert(
+        "Não foi possível acessar a câmera ou microfone. Verifique as permissões."
+      );
+    });
+});
 
 // Função para configurar controles de mídia
 function setupMediaControls(stream) {
@@ -78,22 +95,6 @@ function setupMediaControls(stream) {
       : "Desligar Câmera";
   });
 }
-
-// Função para entrar em uma sala
-document.getElementById("join-room").addEventListener("click", () => {
-  const roomId = prompt(
-    "Digite o ID da sala ou deixe em branco para criar uma nova:"
-  );
-  if (!roomId) {
-    // Cria uma sala com ID aleatório
-    currentRoomId = Math.random().toString(36).substr(2, 9);
-    alert(`Sala criada! Compartilhe o ID: ${currentRoomId}`);
-  } else {
-    currentRoomId = roomId;
-  }
-
-  joinRoom(currentRoomId, localStream);
-});
 
 // Função para entrar/join numa sala
 function joinRoom(roomId, stream) {
