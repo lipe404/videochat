@@ -3,11 +3,11 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  font-family: "Segoe UI", sans-serif; /* Definindo font-family padrão */
 }
 
 /* Estilo do Body */
 body {
-  font-family: "Segoe UI", sans-serif;
   background: linear-gradient(135deg, #ffb6c1, #d0a9f5, #87cefa);
   background-size: 400% 400%;
   animation: gradientBG 20s ease infinite;
@@ -17,6 +17,7 @@ body {
   height: 100vh;
   color: #fff;
   overflow: hidden;
+  background-color: #87cefa; /* Cor de fundo fallback */
 }
 
 /* Animação do fundo */
@@ -42,6 +43,11 @@ body {
   border-radius: 20px;
   backdrop-filter: blur(15px);
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  min-height: 80vh; /* Garantindo um tamanho mínimo */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Centralizando conteúdo */
 }
 
 /* Estilo do header */
@@ -51,6 +57,12 @@ header h1 {
   text-shadow: 2px 2px #ff00c8;
   margin-bottom: 1.5rem;
   letter-spacing: 2px;
+  transition: all 0.3s ease;
+}
+
+header h1:hover {
+  text-shadow: 2px 2px 8px rgba(255, 0, 200, 0.8);
+  color: #ff77e9;
 }
 
 /* Controles de Mídia */
@@ -68,12 +80,13 @@ button {
   cursor: pointer;
   font-size: 1rem;
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-  transition: background 0.3s ease, transform 0.2s ease;
+  transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 button:hover {
   background: linear-gradient(135deg, #ff00c8, #7700ff);
   transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(255, 0, 200, 0.4);
 }
 
 /* Estilo do grid de vídeos */
@@ -82,6 +95,7 @@ button:hover {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
   margin-top: 2rem;
+  padding: 1rem;
 }
 
 video {
@@ -90,9 +104,59 @@ video {
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.3);
   transition: transform 0.3s ease;
+  min-height: 150px; /* Garantindo um tamanho mínimo para vídeos */
 }
 
 video:hover {
   transform: scale(1.03);
+  filter: brightness(1.1);
 }
 
+/* Resposta para tamanhos menores */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+
+  .container {
+    padding: 1.5rem;
+    width: 100%;
+  }
+
+  header h1 {
+    font-size: 2.5rem;
+  }
+
+  button {
+    font-size: 0.9rem;
+    padding: 10px 20px;
+  }
+
+  #video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+/* Resposta para tamanhos muito pequenos (como celulares em modo retrato) */
+@media (max-width: 480px) {
+  body {
+    padding: 5px; /* Ajustando a distância nas telas menores */
+  }
+
+  .container {
+    padding: 1rem;
+  }
+
+  header h1 {
+    font-size: 2rem;
+  }
+
+  button {
+    font-size: 0.8rem;
+    padding: 8px 16px;
+  }
+
+  #video-grid {
+    grid-template-columns: 1fr; /* Colocando os vídeos em uma coluna única */
+  }
+}
