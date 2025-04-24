@@ -1,5 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, set, onChildAdded } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  onChildAdded,
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 let localStream;
 let currentRoomId;
@@ -37,16 +42,8 @@ const iceServers = [
 
 // Função para capturar a mídia e conectar ao entrar na sala
 document.getElementById("join-room").addEventListener("click", () => {
-  const roomId = prompt(
-    "Digite o ID da sala ou deixe em branco para criar uma nova:"
-  );
-  if (!roomId) {
-    // Cria uma sala com ID aleatório
-    currentRoomId = Math.random().toString(36).substr(2, 9);
-    alert(`Sala criada! Compartilhe o ID: ${currentRoomId}`);
-  } else {
-    currentRoomId = roomId;
-  }
+  // Aqui não pedimos mais o ID da sala, todos entram na mesma sala
+  currentRoomId = "sala-padrao"; // ID fixo
 
   // Captura de mídia
   navigator.mediaDevices
