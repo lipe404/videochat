@@ -21,33 +21,86 @@ const peers = {};
 const myVideo = document.createElement("video");
 myVideo.muted = true;
 
-// Captura de mídia
+// Captura de mídia inicial
 navigator.mediaDevices
   .getUserMedia({ video: true, audio: true })
   .then((stream) => {
+    localStream = stream;
+    const myVideo = document.createElement("video");
+    myVideo.muted = true;
     addVideoStream(myVideo, stream);
 
-    // Escuta novas conexões
-    const roomId = "sala1"; // ID fixo da sala
-    const roomRef = database.ref(`rooms/${roomId}`);
+    // Configura botões de controle
+    setupMediaControls(stream);
+  })
+  .catch((error) => {
+    console.error("Erro ao acessar a câmera/microfone:", error);
+    alert(
+      "Não foi possível acessar a câmera ou microfone. Verifique as permissões."
+    );
+  });
 
-    roomRef.on("child_added", (snapshot) => {
-      const peerId = snapshot.key;
+// Função para configurar controles de mídia
+function setupMediaControls(stream) {
+  const muteAudioButton = document.getElementById("mute-audio");
+  const toggleVideoButton = document.getElementById("toggle-video");
+
+  // Botão para mutar/desmutar áudio
+  muteAudioButton.addEventListener("click", () => {
+    const audioTracks = stream.getAudioTracks();
+    const isMuted = audioTracks[0].enabled;
+    audioTracks.forEach((track) => (track.enabled = !isMuted));
+    muteAudioButton.textContent = isMuted ? "Desmutar Áudio" : "Mutar Áudio";
+  });
+
+  // Botão para ligar/desligar câmera
+  toggleVideoButton.addEventListener("click", () => {
+    const videoTracks = stream.getVideoTracks();
+    const isVideoEnabled = videoTracks[0].enabled;
+    videoTracks.forEach((track) => (track.enabled = !isVideoEnabled));
+    toggleVideoButton.textContent = isVideoEnabled
+      ? "Ligar Câmera"
+      : "Desligar Câmera";
+  });
+}
+
+// Função para entrar em uma sala
+document.getElementById("join-room").addEventListener("click", () => {
+  const roomId = prompt(
+    "Digite o ID da sala ou deixe em branco para criar uma nova:"
+  );
+  if (!roomId) {
+    // Cria uma sala com ID aleatório
+    currentRoomId = Math.random().toString(36).substr(2, 9);
+    alert(`Sala criada! Compartilhe o ID: ${currentRoomId}`);
+  } else {
+    currentRoomId = roomId;
+  }
+
+  joinRoom(currentRoomId, localStream);
+});
+
+// Função para entrar/join numa sala
+function joinRoom(roomId, stream) {
+  const roomRef = database.ref(`rooms/${roomId}`);
+
+  // Escuta novos usuários na sala
+  roomRef.on("child_added", (snapshot) => {
+    const peerId = snapshot.key;
+    if (peerId !== firebase.auth().currentUser?.uid) {
       connectToNewUser(peerId, stream);
-    });
-
-    // Registra o usuário atual na sala
-    const userId = Math.random().toString(36).substr(2, 9);
-    roomRef.child(userId).set(true);
+    }
   });
 
-// Função para adicionar vídeo à interface
-function addVideoStream(video, stream) {
-  video.srcObject = stream;
-  video.addEventListener("loadedmetadata", () => {
-    video.play();
+  // Registra o usuário atual na sala
+  const userId =
+    firebase.auth().currentUser?.uid || Math.random().toString(36).substr(2, 9);
+  roomRef.child(userId).set(true);
+
+  // Remove o usuário ao sair
+  window.addEventListener("beforeunload", () => {
+    roomRef.child(userId).remove();
   });
-  videoGrid.append(video);
 }
 
 // Função para conectar a novos usuários
@@ -66,16 +119,28 @@ function connectToNewUser(peerId, stream) {
   // Troca de sinais (SDP e ICE)
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-      database.ref(`rooms/sala1/${peerId}/candidates`).push(event.candidate);
+      database
+        .ref(`rooms/${currentRoomId}/${peerId}/candidates`)
+        .push(event.candidate);
     }
   };
 
+  // Recebe candidatos ICE do outro usuário
   database
-    .ref(`rooms/sala1/${peerId}/candidates`)
+    .ref(`rooms/${currentRoomId}/${peerId}/candidates`)
     .on("child_added", (snapshot) => {
       const candidate = new RTCIceCandidate(snapshot.val());
       peerConnection.addIceCandidate(candidate);
     });
 
   peers[peerId] = peerConnection;
+}
+
+// Função para adicionar vídeo à interface
+function addVideoStream(video, stream) {
+  video.srcObject = stream;
+  video.addEventListener("loadedmetadata", () => {
+    video.play();
+  });
+  videoGrid.append(video);
 }
