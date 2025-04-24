@@ -1,49 +1,42 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="description"
-            content="WebRolê - Videochamadas em grupo no estilo vaporwave">
-        <meta name="author" content="Seu Nome">
-        <link rel="icon" href="favicon.ico" type="image/x-icon">
-        <title>WebRolê</title>
-        <link rel="stylesheet" href="styles.css">
-    </head>
-    <body>
-        <div class="container">
-            <header>
-                <h1>WebRolê</h1>
-            </header>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WebRolê - Videochamadas em grupo no estilo vaporwave">
+    <meta name="author" content="Felipe Toledo">
+    <meta name="keywords" content="vídeo chamada, grupo, vaporwave, comunicação, WebRTC">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <title>WebRolê - Videochamadas</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>WebRolê</h1>
+        </header>
 
-            <!-- Controles de Mídia -->
-            <div id="controls">
-                <button id="mute-audio">Mutar Áudio</button>
-                <button id="toggle-video">Desligar Câmera</button>
-                <button id="join-room">Entrar na Sala</button>
-            </div>
-
-            <!-- Grade de Vídeos -->
-            <div id="video-grid">
-                <!-- Aqui serão exibidos os vídeos dos participantes -->
-            </div>
-
-            <!-- Fallback para navegadores sem suporte -->
-            <noscript>
-                <p>Por favor, habilite o JavaScript para usar o WebRolê.</p>
-            </noscript>
+        <!-- Controles de Mídia -->
+        <div id="controls">
+            <button id="mute-audio">Mutar Áudio</button>
+            <button id="toggle-video">Desligar Câmera</button>
+            <button id="join-room">Entrar na Sala</button>
         </div>
 
-        <!-- Footer -->
-        <footer>
-            <p>Feito com 💖 por Felipe Toledo</p>
-        </footer>
+        <!-- Grade de Vídeos -->
+        <div id="video-grid">
+            <!-- Aqui serão exibidos os vídeos dos participantes -->
+        </div>
 
-        <!-- Scripts -->
-        <script
-            src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-        <script
-            src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-        <script src="app.js"></script>
-    </body>
+        <!-- Fallback para navegadores sem suporte -->
+        <noscript>
+            <p>Por favor, habilite o JavaScript para usar o WebRolê.</p>
+        </noscript>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="app.js"></script>
+</body>
 </html>

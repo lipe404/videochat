@@ -1,4 +1,5 @@
-// app.js
+let localStream;
+let currentRoomId;
 
 // Configuração do Firebase
 const firebaseConfig = {
@@ -11,8 +12,13 @@ const firebaseConfig = {
   appId: "1:367941394512:web:854ae35467967803e6f155",
 };
 
-// Inicializa o Firebase
-const app = firebase.initializeApp(firebaseConfig);
+// Inicializa o Firebase se não estiver inicializado
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+} else {
+  firebase.app();
+}
+
 const database = firebase.database();
 
 // Variáveis globais
@@ -26,7 +32,6 @@ navigator.mediaDevices
   .getUserMedia({ video: true, audio: true })
   .then((stream) => {
     localStream = stream;
-    const myVideo = document.createElement("video");
     myVideo.muted = true;
     addVideoStream(myVideo, stream);
 
@@ -100,6 +105,10 @@ function joinRoom(roomId, stream) {
   // Remove o usuário ao sair
   window.addEventListener("beforeunload", () => {
     roomRef.child(userId).remove();
+    for (const peerId in peers) {
+      const peer = peers[peerId];
+      peer.close(); // Fecha a conexão com o peer
+    }
   });
 }
 
