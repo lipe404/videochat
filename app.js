@@ -164,3 +164,6 @@ function addVideoStream(video, stream) {
   });
   videoGrid.append(video);
 }
+
+// Adicionando o vídeo local na grid
+addVideoStream(myVideo, localStream);
