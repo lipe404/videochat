@@ -157,7 +157,12 @@ function addVideoStream(video, stream) {
   video.addEventListener("loadedmetadata", () => {
     video.play();
   });
-  videoGrid.append(video);
+
+  // Adiciona o vídeo à grade com um ajuste para layout
+  const videoContainer = document.createElement("div");
+  videoContainer.classList.add("video-container");
+  videoContainer.appendChild(video);
+  videoGrid.append(videoContainer);
 }
 
 // Adicionando o vídeo local na grid

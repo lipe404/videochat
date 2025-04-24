@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description"
-            content="WebRolê - Videochamadas em grupo no estilo vaporwave">
-        <meta name="author" content="Felipe Toledo">
+            content="WebRolê - Videochamadas em grupo no estilo vaporwave" />
+        <meta name="author" content="Felipe Toledo" />
         <meta name="keywords"
-            content="vídeo chamada, grupo, vaporwave, comunicação, WebRTC">
+            content="vídeo chamada, grupo, vaporwave, comunicação, WebRTC" />
         <title>WebRolê - Videochamadas</title>
-        <link rel="stylesheet" href="styles.css">
+        <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
         <div class="container">
@@ -25,9 +25,12 @@
             </div>
 
             <!-- Grade de Vídeos -->
-            <div id="video-grid"></div> <!-- Grade de vídeos -->
-            <video id="my-video" autoplay muted playsinline></video>
-            <!-- Meu vídeo -->
+            <div id="video-grid">
+                <!-- Meu vídeo -->
+                <div id="local-video-container">
+                    <video id="my-video" autoplay muted playsinline></video>
+                </div>
+            </div>
 
             <!-- Fallback para navegadores sem suporte -->
             <noscript>
@@ -36,8 +39,10 @@
         </div>
 
         <!-- Scripts -->
-        <script type="module" src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-        <script type="module" src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+        <script type="module"
+            src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+        <script type="module"
+            src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
         <script type="module" src="app.js"></script>
     </body>
 </html>
