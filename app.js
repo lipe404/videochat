@@ -1,3 +1,6 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, set, onChildAdded } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
 let localStream;
 let currentRoomId;
 
@@ -12,14 +15,9 @@ const firebaseConfig = {
   appId: "1:367941394512:web:854ae35467967803e6f155",
 };
 
-// Inicializa o Firebase se não estiver inicializado
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-} else {
-  firebase.app();
-}
-
-const database = firebase.database();
+// Inicializa o Firebase
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
 
 // Variáveis globais
 const videoGrid = document.getElementById("video-grid");
