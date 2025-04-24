@@ -27,6 +27,16 @@ const peers = {};
 const myVideo = document.createElement("video");
 myVideo.muted = true;
 
+// Configurações de conexão RTCPeerConnection
+const iceServers = [
+  {
+    urls: "stun:stun.l.google.com:19302", // Servidor STUN público do Google
+  },
+  {
+    urls: "stun:stun1.l.google.com:19302", // Outro servidor STUN público
+  },
+];
+
 // Captura de mídia inicial
 navigator.mediaDevices
   .getUserMedia({ video: true, audio: true })
