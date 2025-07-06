@@ -4,10 +4,11 @@ import {
   ref,
   set,
   onChildAdded,
+  onChildRemoved,
+  onValue,
+  push,
+  remove,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-
-let localStream;
-let currentRoomId;
 
 // Configuração do Firebase
 const firebaseConfig = {
@@ -25,145 +26,293 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
 // Variáveis globais
-const videoGrid = document.getElementById("video-grid");
+let localStream;
+let currentRoomId;
+let myPeerId;
 const peers = {};
-const myVideo = document.createElement("video");
-myVideo.muted = true;
+const videoGrid = document.getElementById("video-grid");
 
-// Configurações de conexão RTCPeerConnection
+// Configurações ICE
 const iceServers = [
-  {
-    urls: "stun:stun.l.google.com:19302", // Servidor STUN público do Google
-  },
-  {
-    urls: "stun:stun1.l.google.com:19302", // Outro servidor STUN público
-  },
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
 ];
 
-// Função para capturar a mídia e conectar ao entrar na sala
-document.getElementById("join-room").addEventListener("click", () => {
-  // Aqui não pedimos mais o ID da sala, todos entram na mesma sala
-  currentRoomId = "sala-padrao"; // ID fixo
+// Gera ID único para o usuário
+function generatePeerId() {
+  return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+}
 
-  // Captura de mídia
-  navigator.mediaDevices
-    .getUserMedia({ video: true, audio: true })
-    .then((stream) => {
-      localStream = stream;
-      myVideo.muted = true;
-      addVideoStream(myVideo, stream);
+// Obtém ID da sala da URL ou gera uma nova
+function getRoomId() {
+  const urlParams = new URLSearchParams(window.location.search);
+  let roomId = urlParams.get("room");
 
-      // Configura botões de controle
-      setupMediaControls(stream);
+  if (!roomId) {
+    roomId = generatePeerId();
+    // Atualiza a URL sem recarregar a página
+    const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    window.history.replaceState({}, "", newUrl);
+  }
 
-      // Conectar à sala após capturar a mídia
-      joinRoom(currentRoomId, localStream);
-    })
-    .catch((error) => {
-      console.error("Erro ao acessar a câmera/microfone:", error);
-      alert(
-        "Não foi possível acessar a câmera ou microfone. Verifique as permissões."
-      );
+  return roomId;
+}
+
+// Função principal para entrar na sala
+document.getElementById("join-room").addEventListener("click", async () => {
+  try {
+    // Captura mídia do usuário
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480 },
+      audio: true,
     });
+
+    // Configurações iniciais
+    myPeerId = generatePeerId();
+    currentRoomId = getRoomId();
+
+    // Adiciona vídeo local
+    addVideoStream(createVideoElement(true), localStream, myPeerId, true);
+
+    // Configura controles
+    setupMediaControls(localStream);
+
+    // Entra na sala
+    await joinRoom(currentRoomId);
+
+    // Atualiza interface
+    updateUI(true);
+  } catch (error) {
+    console.error("Erro ao entrar na sala:", error);
+    alert("Erro ao acessar câmera/microfone. Verifique as permissões.");
+  }
 });
 
-// Função para configurar controles de mídia
+// Função para entrar na sala
+async function joinRoom(roomId) {
+  const roomRef = ref(database, `rooms/${roomId}`);
+  const peersRef = ref(database, `rooms/${roomId}/peers`);
+
+  // Registra presença na sala
+  await set(ref(database, `rooms/${roomId}/peers/${myPeerId}`), {
+    timestamp: Date.now(),
+    active: true,
+  });
+
+  // Escuta novos peers
+  onChildAdded(peersRef, (snapshot) => {
+    const peerId = snapshot.key;
+    if (peerId !== myPeerId && !peers[peerId]) {
+      console.log("Novo peer detectado:", peerId);
+      createPeerConnection(peerId, true); // Iniciador da conexão
+    }
+  });
+
+  // Escuta peers que saíram
+  onChildRemoved(peersRef, (snapshot) => {
+    const peerId = snapshot.key;
+    if (peers[peerId]) {
+      peers[peerId].close();
+      delete peers[peerId];
+      removeVideoStream(peerId);
+    }
+  });
+
+  // Escuta ofertas
+  onChildAdded(ref(database, `rooms/${roomId}/offers`), async (snapshot) => {
+    const { from, to, offer } = snapshot.val();
+    if (to === myPeerId && !peers[from]) {
+      await handleOffer(from, offer);
+      // Remove a oferta após processar
+      remove(snapshot.ref);
+    }
+  });
+
+  // Escuta respostas
+  onChildAdded(ref(database, `rooms/${roomId}/answers`), async (snapshot) => {
+    const { from, to, answer } = snapshot.val();
+    if (to === myPeerId && peers[from]) {
+      await peers[from].setRemoteDescription(new RTCSessionDescription(answer));
+      // Remove a resposta após processar
+      remove(snapshot.ref);
+    }
+  });
+
+  // Escuta candidatos ICE
+  onChildAdded(
+    ref(database, `rooms/${roomId}/ice-candidates`),
+    async (snapshot) => {
+      const { from, to, candidate } = snapshot.val();
+      if (to === myPeerId && peers[from]) {
+        await peers[from].addIceCandidate(new RTCIceCandidate(candidate));
+        // Remove o candidato após processar
+        remove(snapshot.ref);
+      }
+    }
+  );
+
+  // Limpa ao sair
+  window.addEventListener("beforeunload", () => {
+    remove(ref(database, `rooms/${roomId}/peers/${myPeerId}`));
+  });
+}
+
+// Cria conexão peer-to-peer
+async function createPeerConnection(peerId, isInitiator = false) {
+  const peerConnection = new RTCPeerConnection({ iceServers });
+  peers[peerId] = peerConnection;
+
+  // Adiciona tracks locais
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  // Recebe stream remoto
+  peerConnection.ontrack = (event) => {
+    const remoteStream = event.streams[0];
+    addVideoStream(createVideoElement(false), remoteStream, peerId, false);
+  };
+
+  // Envia candidatos ICE
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      push(ref(database, `rooms/${currentRoomId}/ice-candidates`), {
+        from: myPeerId,
+        to: peerId,
+        candidate: event.candidate.toJSON(),
+      });
+    }
+  };
+
+  // Se for iniciador, cria oferta
+  if (isInitiator) {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    push(ref(database, `rooms/${currentRoomId}/offers`), {
+      from: myPeerId,
+      to: peerId,
+      offer: offer,
+    });
+  }
+}
+
+// Manipula ofertas recebidas
+async function handleOffer(fromPeerId, offer) {
+  const peerConnection = new RTCPeerConnection({ iceServers });
+  peers[fromPeerId] = peerConnection;
+
+  // Adiciona tracks locais
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  // Recebe stream remoto
+  peerConnection.ontrack = (event) => {
+    const remoteStream = event.streams[0];
+    addVideoStream(createVideoElement(false), remoteStream, fromPeerId, false);
+  };
+
+  // Envia candidatos ICE
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      push(ref(database, `rooms/${currentRoomId}/ice-candidates`), {
+        from: myPeerId,
+        to: fromPeerId,
+        candidate: event.candidate.toJSON(),
+      });
+    }
+  };
+
+  // Configura oferta e cria resposta
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  push(ref(database, `rooms/${currentRoomId}/answers`), {
+    from: myPeerId,
+    to: fromPeerId,
+    answer: answer,
+  });
+}
+
+// Cria elemento de vídeo
+function createVideoElement(isLocal) {
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.playsInline = true;
+  if (isLocal) video.muted = true;
+  return video;
+}
+
+// Adiciona stream de vídeo à interface
+function addVideoStream(video, stream, peerId, isLocal) {
+  video.srcObject = stream;
+
+  const videoContainer = document.createElement("div");
+  videoContainer.classList.add("video-container");
+  videoContainer.id = `video-${peerId}`;
+
+  // Adiciona label
+  const label = document.createElement("div");
+  label.classList.add("video-label");
+  label.textContent = isLocal ? "Você" : `Usuário ${peerId.substr(0, 6)}`;
+
+  videoContainer.appendChild(video);
+  videoContainer.appendChild(label);
+  videoGrid.appendChild(videoContainer);
+}
+
+// Remove stream de vídeo
+function removeVideoStream(peerId) {
+  const videoContainer = document.getElementById(`video-${peerId}`);
+  if (videoContainer) {
+    videoContainer.remove();
+  }
+}
+
+// Configura controles de mídia
 function setupMediaControls(stream) {
   const muteAudioButton = document.getElementById("mute-audio");
   const toggleVideoButton = document.getElementById("toggle-video");
 
-  // Botão para mutar/desmutar áudio
   muteAudioButton.addEventListener("click", () => {
     const audioTracks = stream.getAudioTracks();
-    const isMuted = audioTracks[0].enabled;
-    audioTracks.forEach((track) => (track.enabled = !isMuted));
-    muteAudioButton.textContent = isMuted ? "Desmutar Áudio" : "Mutar Áudio";
+    const isEnabled = audioTracks[0]?.enabled;
+    audioTracks.forEach((track) => (track.enabled = !isEnabled));
+    muteAudioButton.textContent = isEnabled ? "Desmutar Áudio" : "Mutar Áudio";
+    muteAudioButton.classList.toggle("muted", !isEnabled);
   });
 
-  // Botão para ligar/desligar câmera
   toggleVideoButton.addEventListener("click", () => {
     const videoTracks = stream.getVideoTracks();
-    const isVideoEnabled = videoTracks[0].enabled;
-    videoTracks.forEach((track) => (track.enabled = !isVideoEnabled));
-    toggleVideoButton.textContent = isVideoEnabled
+    const isEnabled = videoTracks[0]?.enabled;
+    videoTracks.forEach((track) => (track.enabled = !isEnabled));
+    toggleVideoButton.textContent = isEnabled
       ? "Ligar Câmera"
       : "Desligar Câmera";
+    toggleVideoButton.classList.toggle("disabled", !isEnabled);
   });
 }
 
-// Função para entrar/join numa sala
-function joinRoom(roomId, stream) {
-  const roomRef = database.ref(`rooms/${roomId}`);
+// Atualiza interface
+function updateUI(inRoom) {
+  const joinButton = document.getElementById("join-room");
+  const controls = document.getElementById("controls");
 
-  // Escuta novos usuários na sala
-  roomRef.on("child_added", (snapshot) => {
-    const peerId = snapshot.key;
-    if (peerId !== firebase.auth().currentUser?.uid) {
-      connectToNewUser(peerId, stream);
-    }
-  });
-
-  // Registra o usuário atual na sala
-  const userId =
-    firebase.auth().currentUser?.uid || Math.random().toString(36).substr(2, 9);
-  roomRef.child(userId).set(true);
-
-  // Remove o usuário ao sair
-  window.addEventListener("beforeunload", () => {
-    roomRef.child(userId).remove();
-    for (const peerId in peers) {
-      const peer = peers[peerId];
-      peer.close(); // Fecha a conexão com o peer
-    }
-  });
-}
-
-// Função para conectar a novos usuários
-function connectToNewUser(peerId, stream) {
-  const peerConnection = new RTCPeerConnection();
-
-  // Adiciona faixas de mídia ao peer connection
-  stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
-
-  // Recebe faixas de mídia do outro usuário
-  peerConnection.ontrack = (event) => {
-    const video = document.createElement("video");
-    addVideoStream(video, event.streams[0]);
-  };
-
-  // Troca de sinais (SDP e ICE)
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      database
-        .ref(`rooms/${currentRoomId}/${peerId}/candidates`)
-        .push(event.candidate);
-    }
-  };
-
-  // Recebe candidatos ICE do outro usuário
-  database
-    .ref(`rooms/${currentRoomId}/${peerId}/candidates`)
-    .on("child_added", (snapshot) => {
-      const candidate = new RTCIceCandidate(snapshot.val());
-      peerConnection.addIceCandidate(candidate);
+  if (inRoom) {
+    joinButton.style.display = "none";
+    // Adiciona botão para copiar link
+    const copyLinkButton = document.createElement("button");
+    copyLinkButton.textContent = "Copiar Link da Sala";
+    copyLinkButton.addEventListener("click", () => {
+      navigator.clipboard.writeText(window.location.href);
+      copyLinkButton.textContent = "Link Copiado!";
+      setTimeout(() => {
+        copyLinkButton.textContent = "Copiar Link da Sala";
+      }, 2000);
     });
-
-  peers[peerId] = peerConnection;
+    controls.appendChild(copyLinkButton);
+  }
 }
-
-// Função para adicionar vídeo à interface
-function addVideoStream(video, stream) {
-  video.srcObject = stream;
-  video.addEventListener("loadedmetadata", () => {
-    video.play();
-  });
-
-  // Adiciona o vídeo à grade com um ajuste para layout
-  const videoContainer = document.createElement("div");
-  videoContainer.classList.add("video-container");
-  videoContainer.appendChild(video);
-  videoGrid.append(videoContainer);
-}
-
-// Adicionando o vídeo local na grid
-addVideoStream(myVideo, localStream);
