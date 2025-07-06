@@ -166,51 +166,94 @@ video:hover {
   position: relative;
   border-radius: 16px;
   overflow: hidden;
+  transition: transform 0.3s ease;
+}
+
+.video-container:hover {
+  transform: scale(1.02);
 }
 
 .video-label {
   position: absolute;
   bottom: 8px;
   left: 8px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8);
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.8rem;
   z-index: 10;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+/* Indicador de status */
+.status-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.status-indicator.local {
+  background: #00ff00;
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+}
+
+.status-indicator.remote {
+  background: #0088ff;
+  box-shadow: 0 0 8px rgba(0, 136, 255, 0.6);
+}
+
+/* Contador de participantes */
+#participant-counter {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 20px;
+  margin: 10px;
+  font-weight: bold;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 /* Estilos para botões ativos/inativos */
 button.muted {
-  background: linear-gradient(135deg, #ff4444, #cc0000);
+  background: linear-gradient(135deg, #ff4444, #cc0000) !important;
 }
 
 button.disabled {
-  background: linear-gradient(135deg, #666666, #333333);
+  background: linear-gradient(135deg, #666666, #333333) !important;
 }
 
-/* Indicador de conexão */
-.connection-status {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  z-index: 100;
+/* Animação de conexão */
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
 }
 
-.connection-status.connected {
-  background: rgba(0, 255, 0, 0.8);
-  color: white;
+.video-container.connecting {
+  animation: pulse 2s infinite;
 }
 
-.connection-status.connecting {
-  background: rgba(255, 165, 0, 0.8);
-  color: white;
-}
+/* Responsividade melhorada */
+@media (max-width: 768px) {
+  #video-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
 
-.connection-status.disconnected {
-  background: rgba(255, 0, 0, 0.8);
-  color: white;
+  .video-label {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
 }
